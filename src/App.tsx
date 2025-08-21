@@ -9,11 +9,13 @@ import ServicesPage from './pages/ServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import ContactPage from './pages/ContactPage';
+import RefreshFromTop from './components/NewPageFromTop';
 
 
 export default function App() {
   return(
     <Router basename="/regulus-investment">
+      < RefreshFromTop/>
       <div className="min-h-screen bg-white">
         <Navbar />
         <main>
