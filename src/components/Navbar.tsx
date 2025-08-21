@@ -22,7 +22,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
               <img 
-                src="/trace.svg" 
+                src="/regulus-investment/trace.svg" 
                 alt="Regulus Investment Logo" 
                 className="w-16 h-16 lg:w-24 lg:h-24" 
               />

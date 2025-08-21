@@ -11,7 +11,7 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
               <img 
-                src="/trace.svg" 
+                src="/regulus-investment/trace.svg" 
                 alt="Regulus Investment Logo" 
                 className="w-24 h-24" 
               />
