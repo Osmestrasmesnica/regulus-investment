@@ -13,7 +13,7 @@ import ContactPage from './pages/ContactPage';
 
 export default function App() {
   return(
-    <Router>
+    <Router basename="/regulus-investment/">
       <div className="min-h-screen bg-white">
         <Navbar />
         <main>
