@@ -8,5 +8,5 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  base: "/regulus-investment"
+  base: "/regulus-investment/"
 })
