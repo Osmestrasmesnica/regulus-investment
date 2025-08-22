@@ -3,7 +3,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useToast } from './ui/use-toast';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import backend from './newsletter';
 
 export default function NewsletterSignup() {
   const [email, setEmail] = useState('');
@@ -12,22 +11,23 @@ export default function NewsletterSignup() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();
 
+  // Preporučujem da ove vrednosti stavite u .env.local fajl
+  const MAILERLITE_ACTION_URL = import.meta.env.VITE_MAILERLITE_ACTION_URL;
+  const MAILERLITE_GROUP_ID = import.meta.env.VITE_MAILERLITE_GROUP_ID;
+
+  // Definišemo tip za `email` parametar i povratnu vrednost funkcije
   const validateEmail = (email: string): string | undefined => {
     if (!email.trim()) return 'Email address is required';
-    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return 'Please enter a valid email address';
-    
     if (email.length > 254) return 'Email address is too long';
-    
     return undefined;
   };
 
+  // Definišemo tip za event `e` na input polju
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setEmail(value);
-    
-    // Clear error when user starts typing
     if (error) {
       setError('');
     }
@@ -40,9 +40,10 @@ export default function NewsletterSignup() {
     }
   };
 
+  // Definišemo tip za event `e` na formi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateEmail(email);
     if (validationError) {
       setError(validationError);
@@ -57,70 +58,51 @@ export default function NewsletterSignup() {
     setIsLoading(true);
     setError('');
 
+    const formData = new FormData();
+    formData.append('fields[email]', email);
+    // TypeScript može da se žali da je vrednost iz .env možda `undefined`.
+    // Provera pre slanja je dobra praksa.
+    if (MAILERLITE_GROUP_ID) {
+      formData.append('groups[]', MAILERLITE_GROUP_ID);
+    }
+    formData.append('anticsrf', 'true');
+
     try {
-      const response = await backend.newsletter.subscribe({ email });
-      
-      if (response.success) {
+      if (!MAILERLITE_ACTION_URL) {
+        throw new Error("MailerLite URL is not defined. Please check your .env.local file.");
+      }
+      const response = await fetch(MAILERLITE_ACTION_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
         setIsSubmitted(true);
         toast({
-          title: "Subscription Initiated",
-          description: response.message,
+          title: "Subscription Successful!",
+          description: "Please check your email to confirm your subscription.",
         });
         setEmail('');
       } else {
-        // Handle specific error cases
-        if (response.message.includes('already subscribed')) {
-          setError('This email is already subscribed');
-          toast({
-            title: "Already Subscribed",
-            description: response.message,
-            variant: "destructive",
-          });
-        } else if (response.message.includes('valid email')) {
-          setError('Please enter a valid email address');
-          toast({
-            title: "Invalid Email",
-            description: response.message,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Subscription Error",
-            description: response.message,
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Newsletter subscription error:', error);
-      
-      // Handle different types of errors
-      if (error instanceof TypeError && error.message.includes('fetch')) {
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.message || "An error occurred. Please try again.";
+        setError(errorMessage);
         toast({
-          title: "Connection Error",
-          description: "Unable to connect to the server. Please check your internet connection and try again.",
-          variant: "destructive",
-        });
-      } else if (error instanceof Error && error.message.includes('timeout')) {
-        toast({
-          title: "Request Timeout",
-          description: "The request took too long to complete. Please try again.",
-          variant: "destructive",
-        });
-      } else if (error instanceof Error && error.message.includes('email')) {
-        setError('Failed to send confirmation email. Please try again.');
-        toast({
-          title: "Email Service Error",
-          description: "Failed to send confirmation email. Please try again later.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Unexpected Error",
-          description: "Something went wrong. Please try again.",
+          title: "Subscription Error",
+          description: errorMessage,
           variant: "destructive",
         });
       }
+    } catch (err) {
+      console.error('Newsletter subscription error:', err);
+      // Poboljšano rukovanje greškama
+      const errorMessage = err instanceof Error ? err.message : "Unable to connect to the server.";
+      setError(errorMessage);
+      toast({
+        title: "Greška",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -129,8 +111,7 @@ export default function NewsletterSignup() {
   if (isSubmitted) {
     return (
       <div className="text-center py-4">
-        {/* Koristimo CheckCircle ikonicu za jasan znak uspeha */}
-        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" /> 
+        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
         <h4 className="text-lg font-semibold text-white mb-2">Thank You for Subscribing!</h4>
         <p className="text-gray-300 text-sm">
           Please check your email to confirm your subscription.
@@ -144,7 +125,7 @@ export default function NewsletterSignup() {
       <div>
         <Input
           type="email"
-          placeholder="Enter your email"
+          placeholder="Unesite vaš email"
           value={email}
           onChange={handleEmailChange}
           onBlur={handleBlur}
@@ -161,10 +142,10 @@ export default function NewsletterSignup() {
           </div>
         )}
       </div>
-      
+
       <Button
         type="submit"
-        disabled={isLoading || !!error}
+        disabled={isLoading || !!error || !email}
         className="w-full bg-yellow-600 hover:bg-yellow-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? (

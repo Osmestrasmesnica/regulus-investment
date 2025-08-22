@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Linkedin } from 'lucide-react';
-import Newsletter from '../components/Newsletter.tsx';
+import NewsletterSignup from '../components/NewsletterSignup';
 
 export default function Footer() {
   return (
@@ -70,7 +70,8 @@ export default function Footer() {
             <p className="text-gray-300 mb-4 text-sm">
               Subscribe to our newsletter for the latest insights in mining finance.
             </p>
-            <Newsletter />
+            {/* <Newsletter /> */}
+            <NewsletterSignup />
             <div className="mt-6">
               <a
                 href="https://linkedin.com"
