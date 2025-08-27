@@ -26,7 +26,9 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border bg-background text-white",
+        default:      
+          "bg-primary text-primary-foreground border-border " + // Mobilni stilovi (taman toast)
+          "sm:bg-background sm:text-foreground sm:border",     // Desktop stilovi (vraća se na svetao)
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
       },

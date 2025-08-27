@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// useNavigate se više ne koristi, pa ga možemo ukloniti ako ne preusmeravamo
+// import { useNavigate } from 'react-router-dom'; 
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
 import { Loader2, AlertCircle } from 'lucide-react';
-import backend from './client';
+// import backend from './client'; // 1. Uklanjamo zavisnost od backend-a
 
 interface FormErrors {
   name?: string;
@@ -22,8 +23,12 @@ export default function ContactForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
+  // 2. Dodajte vaš Access Key ovde (najbolje iz .env.local fajla)
+  const WEB3FORMS_ACCESS_KEY = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY;
+
+  // SVA VAŠA VALIDACIJA I FUNKCIJE OSTALE SU POTPUNO ISTE - ODLIČNE SU!
   const validateField = (name: string, value: string): string | undefined => {
     switch (name) {
       case 'name': {
@@ -50,50 +55,29 @@ export default function ContactForm() {
         return undefined;
     }
   };
-
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-    
     Object.entries(formData).forEach(([key, value]) => {
       const error = validateField(key, value);
-      if (error) {
-        newErrors[key as keyof FormErrors] = error;
-      }
+      if (error) { newErrors[key as keyof FormErrors] = error; }
     });
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Clear error for this field when user starts typing
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined,
-      }));
+      setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
-
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     const error = validateField(name, value);
-    
-    if (error) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: error,
-      }));
-    }
+    if (error) { setErrors(prev => ({ ...prev, [name]: error })); }
   };
 
+  // 3. Menjamo samo ovu funkciju
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -108,96 +92,70 @@ export default function ContactForm() {
 
     setIsLoading(true);
 
+    // Pripremamo podatke za slanje Web3Forms-u
+    const dataToSend = {
+      ...formData,
+      access_key: WEB3FORMS_ACCESS_KEY,
+      subject: `New message from ${formData.name}`, // Možete prilagoditi naslov emaila
+    };
+
     try {
-      const response = await backend.contact.submit(formData);
+      if (!WEB3FORMS_ACCESS_KEY) {
+          throw new Error("Web3Forms Access Key is not defined. Check your .env.local file.");
+      }
+
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(dataToSend),
+      });
       
-      if (response.success) {
-        // Check if we should redirect to confirmation page
-        if (response.redirectTo) {
-          navigate(response.redirectTo);
-        } else {
-          toast({
-            title: "Message Sent Successfully!",
-            description: response.message,
-          });
-          setFormData({ name: '', email: '', message: '' });
-          setErrors({});
-        }
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Message Sent Successfully!",
+          description: "Thank you for reaching out. We will get back to you shortly.",
+        });
+        setFormData({ name: '', email: '', message: '' }); // Reset forme
+        setErrors({});
       } else {
-        // Handle specific error cases
-        if (response.message.includes('rate limit')) {
-          toast({
-            title: "Too Many Requests",
-            description: response.message,
-            variant: "destructive",
-          });
-        } else if (response.message.includes('email')) {
-          setErrors({ email: 'Please enter a valid email address' });
-        } else if (response.message.includes('required')) {
-          toast({
-            title: "Missing Information",
-            description: response.message,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Submission Error",
-            description: response.message,
-            variant: "destructive",
-          });
-        }
+        console.error("Error from Web3Forms:", result);
+        toast({
+          title: "Submission Error",
+          description: result.message || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Contact form submission error:', error);
-      
-      // Handle different types of errors
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        toast({
-          title: "Connection Error",
-          description: "Unable to connect to the server. Please check your internet connection and try again.",
-          variant: "destructive",
-        });
-      } else if (error instanceof Error && error.message.includes('timeout')) {
-        toast({
-          title: "Request Timeout",
-          description: "The request took too long to complete. Please try again.",
-          variant: "destructive",
-        });
-      } else if (error instanceof Error && error.message.includes('rate limit')) {
-        toast({
-          title: "Too Many Requests",
-          description: "Please wait a moment before submitting again.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Unexpected Error",
-          description: "Something went wrong while sending your message. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Unexpected Error",
+        description: "Something went wrong while sending your message. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // OSTATAK KOMPONENTE (JSX) JE POTPUNO ISTI
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      {/*... vaš JSX ostaje nepromenjen ...*/}
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
           Name *
         </label>
         <Input
-          type="text"
-          id="name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          type="text" id="name" name="name" value={formData.name}
+          onChange={handleChange} onBlur={handleBlur}
           placeholder="Your full name"
           className={errors.name ? 'border-red-500 focus:border-red-500' : ''}
-          disabled={isLoading}
-          required
+          disabled={isLoading} required
         />
         {errors.name && (
           <div className="flex items-center mt-1 text-sm text-red-600">
@@ -212,16 +170,11 @@ export default function ContactForm() {
           Email *
         </label>
         <Input
-          type="email"
-          id="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          type="email" id="email" name="email" value={formData.email}
+          onChange={handleChange} onBlur={handleBlur}
           placeholder="your.email@example.com"
           className={errors.email ? 'border-red-500 focus:border-red-500' : ''}
-          disabled={isLoading}
-          required
+          disabled={isLoading} required
         />
         {errors.email && (
           <div className="flex items-center mt-1 text-sm text-red-600">
@@ -236,16 +189,12 @@ export default function ContactForm() {
           Message *
         </label>
         <Textarea
-          id="message"
-          name="message"
-          value={formData.message}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          id="message" name="message" value={formData.message}
+          onChange={handleChange} onBlur={handleBlur}
           placeholder="Tell us about your project or inquiry..."
           rows={6}
           className={errors.message ? 'border-red-500 focus:border-red-500' : ''}
-          disabled={isLoading}
-          required
+          disabled={isLoading} required
         />
         {errors.message && (
           <div className="flex items-center mt-1 text-sm text-red-600">
@@ -259,18 +208,12 @@ export default function ContactForm() {
       </div>
 
       <Button
-        type="submit"
-        disabled={isLoading}
+        type="submit" disabled={isLoading}
         className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-3 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Sending Message...
-          </>
-        ) : (
-          'Send Message'
-        )}
+          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending Message...</>
+        ) : ( 'Send Message' )}
       </Button>
     </form>
   );

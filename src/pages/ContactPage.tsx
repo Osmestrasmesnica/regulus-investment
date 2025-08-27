@@ -74,14 +74,6 @@ export default function ContactPage() {
               </div>
 
               {/* Map */}
-              {/* <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <MapPin className="h-12 w-12 mx-auto mb-2" />
-                  <p>Interactive map would be embedded here</p>
-                  <p className="text-sm">Bahrain Financial Harbour, Manama</p>
-                </div> 
-              </div> */}
-              {/* The container div for the map */}
               <div className="bg-gray-100 rounded-lg h-64 overflow-hidden">
                 <iframe
                   className="w-full h-full border-0"
